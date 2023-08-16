@@ -1,0 +1,5 @@
+Django==4.2.1
+requests==2.31.0
+djangorestframework==3.14.0
+django-environ==0.10.0
+drf-spectacular==0.26.2
