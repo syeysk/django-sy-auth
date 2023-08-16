@@ -10,7 +10,6 @@ environ.Env.read_env(env_file=BASE_DIR / '.env')
 DEBUG = env('DEBUG')
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['*'])
 SITE_URL = env.str('SITE_URL', default='http://127.0.0.1')
-API_TOKEN_SALT = env('API_TOKEN_SALT')
 SECRET_KEY = env('SECRET_KEY')
 ROOT_URLCONF = 'server.urls'
 WSGI_APPLICATION = 'server.wsgi.application'
@@ -28,7 +27,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'drf_spectacular',
     'server',
-    'auth',
+    'auth_service',
 ]
 
 MIDDLEWARE = [
@@ -105,7 +104,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # External auth
 
-AUTH_USER_MODEL = 'django_sy_auth.auth.models.AuthUser'
+AUTH_USER_MODEL = 'auth_service.AuthUser'
 AUTHENTICATION_BACKENDS = ['django_sy_framework.custom_auth.backend.CustomAuthBackend']
 MICROSERVICES_TOKENS = {
     'from_platform': env('MICROSERVICE_TOKEN_FROM_PLATFORM'),
@@ -113,7 +112,6 @@ MICROSERVICES_TOKENS = {
     'from_notes': env('MICROSERVICE_TOKEN_FROM_NOTES'),
 }
 MICROSERVICES_KEYS = {
-    'auth': env('MICROSERVICE_KEY_TO_AUTH'),
 }
 MICROSERVICES_URLS = {
     'auth': env('MICROSERVICE_URL_AUTH'),
