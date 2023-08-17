@@ -105,7 +105,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # External auth
 
 AUTH_USER_MODEL = 'auth_service.AuthUser'
-AUTHENTICATION_BACKENDS = ['django_sy_framework.custom_auth.backend.CustomAuthBackend']
 MICROSERVICES_TOKENS = {
     'from_platform': env('MICROSERVICE_TOKEN_FROM_PLATFORM'),
     'from_faci': env('MICROSERVICE_TOKEN_FROM_FACI'),
