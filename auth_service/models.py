@@ -1,8 +1,18 @@
 import uuid
 
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, UserManager
 from django.db import models
+
+
+def make_microservice_auth_id():
+    return uuid.uuid4()
+
+
+class AuthUserManager(UserManager):
+    def _create_user(self, username, email, password, **extra_fields):
+        extra_fields['microservice_auth_id'] = make_microservice_auth_id()
+        return super()._create_user(username, email, password, **extra_fields)
 
 
 class AuthUser(AbstractUser):
@@ -10,8 +20,7 @@ class AuthUser(AbstractUser):
         'Глобальный ID пользователя', null=False, blank=False, unique=True,
     )
 
-    def make_microservice_auth_id(self):
-        self.microservice_auth_id = uuid.uuid4()
+    objects = AuthUserManager()
 
     class Meta(AbstractUser.Meta):
         verbose_name = 'Пользователь'

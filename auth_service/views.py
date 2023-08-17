@@ -22,6 +22,8 @@ class LoginUserView(APIView):
             'microservice_auth_id': user.microservice_auth_id,
             'last_name': user.last_name,
             'first_name': user.first_name,
+            'is_staff': user.is_staff,
+            'is_superuser': user.is_superuser,
         }
         return Response(status=status.HTTP_200_OK, data=responsed_data)
 
@@ -39,16 +41,23 @@ class RegistrateUserView(APIView):
         if user:
             return Response(status=status.HTTP_200_OK, data={'success': False})
 
-        user = user_model(
+        # user = user_model(
+        #     username=data['username'],
+        #     email=data['email'],
+        #     first_name=data['first_name'],
+        #     last_name=data['last_name'],
+        # )
+        # user.set_password(data['password'])
+        # user.make_microservice_auth_id()
+        # user.save()
+
+        user = user_model.objects.create_user(
             username=data['username'],
             email=data['email'],
             first_name=data['first_name'],
             last_name=data['last_name'],
+            password=data['password'],
         )
-        user.set_password(data['password'])
-        user.make_microservice_auth_id()
-        user.save()
-
         responsed_data = {'success': True, 'microservice_auth_id': user.microservice_auth_id}
         return Response(status=status.HTTP_200_OK, data=responsed_data)
 
