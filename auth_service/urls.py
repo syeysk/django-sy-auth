@@ -4,7 +4,7 @@ from auth_service.views import (
     LoginUserView,
     RegistrateUserView,
     LoginOrRegistrateUserByExternServiceView,
-    ChangeUserView,
+    UserView,
 )
 
 
@@ -16,5 +16,5 @@ urlpatterns = [
         LoginOrRegistrateUserByExternServiceView.as_view(),
         name='login_or_registrate_by_extern',
     ),
-    path('change/', ChangeUserView.as_view(), name='change_user'),
+    path('user/', UserView.as_view(), name='user'),
 ]
