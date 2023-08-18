@@ -4,15 +4,20 @@ from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.response import Response
 
+from auth_service.authentication import TokenAuthentication
 from auth_service.models import ExternAuthUser
 from auth_service.serializers import (
     LoginOrRegistrateUserByExternServiceSerializer,
     LoginUserSerializer,
     RegistrateUserSerializer,
 )
+from auth_service.permissions import CheckTokenForAllMicroservices
 
 
 class LoginUserView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [CheckTokenForAllMicroservices]
+
     def post(self, request):
         """Авторизация пользователя"""
         serializer = LoginUserSerializer(data=request.data)
@@ -34,6 +39,8 @@ class LoginUserView(APIView):
 
 
 class RegistrateUserView(APIView):
+    authentication_classes = [TokenAuthentication]
+
     def post(self, request):
         """Регистрация пользователя"""
         serializer = RegistrateUserSerializer(data=request.data)
@@ -90,6 +97,8 @@ class LoginOrRegistrateUserByExternServiceView(APIView):
 
 
 class UserView(APIView):
+    authentication_classes = [TokenAuthentication]
+
     def get(self, request):
         """Отдача данных о пользователе"""
 
