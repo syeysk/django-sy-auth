@@ -6,17 +6,21 @@ from rest_framework.response import Response
 
 from auth_service.authentication import TokenAuthentication
 from auth_service.models import ExternAuthUser
+from auth_service.parsers import EncryptJSONParser
+from auth_service.permissions import CheckTokenForAllMicroservices
+from auth_service.renderers import EncryptJSONRenderer
 from auth_service.serializers import (
     LoginOrRegistrateUserByExternServiceSerializer,
     LoginUserSerializer,
     RegistrateUserSerializer,
 )
-from auth_service.permissions import CheckTokenForAllMicroservices
 
 
 class LoginUserView(APIView):
     authentication_classes = [TokenAuthentication]
     permission_classes = [CheckTokenForAllMicroservices]
+    parser_classes = [EncryptJSONParser]
+    renderer_classes = [EncryptJSONRenderer]
 
     def post(self, request):
         """Авторизация пользователя"""

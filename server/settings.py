@@ -11,6 +11,8 @@ DEBUG = env('DEBUG')
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['*'])
 SITE_URL = env.str('SITE_URL', default='http://127.0.0.1')
 SECRET_KEY = env('SECRET_KEY')
+API_SALT = env('API_SALT')
+API_SECRET_KEY = env('API_SECRET_KEY')
 ROOT_URLCONF = 'server.urls'
 WSGI_APPLICATION = 'server.wsgi.application'
 STATIC_URL = '/static/'
@@ -89,6 +91,9 @@ STATICFILES_DIRS = [
 
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_PARSER_CLASSES': [
+        'rest_framework.parsers.JSONParser',
+    ]
 }
 
 SPECTACULAR_SETTINGS = {
@@ -110,8 +115,6 @@ MICROSERVICES_TOKENS = {
     'from_platform': env('MICROSERVICE_TOKEN_FROM_PLATFORM'),
     'from_faci': env('MICROSERVICE_TOKEN_FROM_FACI'),
     'from_notes': env('MICROSERVICE_TOKEN_FROM_NOTES'),
-}
-MICROSERVICES_KEYS = {
 }
 MICROSERVICES_URLS = {
 }
