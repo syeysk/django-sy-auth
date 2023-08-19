@@ -44,6 +44,9 @@ class LoginUserView(APIView):
 
 class RegistrateUserView(APIView):
     authentication_classes = [TokenAuthentication]
+    permission_classes = [CheckTokenForAllMicroservices]
+    parser_classes = [EncryptJSONParser]
+    renderer_classes = [EncryptJSONRenderer]
 
     def post(self, request):
         """Регистрация пользователя"""
@@ -69,6 +72,11 @@ class RegistrateUserView(APIView):
 
 
 class LoginOrRegistrateUserByExternServiceView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [CheckTokenForAllMicroservices]
+    parser_classes = [EncryptJSONParser]
+    renderer_classes = [EncryptJSONRenderer]
+
     def post(self, request):
         """Авторизация либо регистрация пользователя через внешний сервис"""
         serializer = LoginOrRegistrateUserByExternServiceSerializer(data=request.data)
@@ -102,6 +110,9 @@ class LoginOrRegistrateUserByExternServiceView(APIView):
 
 class UserView(APIView):
     authentication_classes = [TokenAuthentication]
+    permission_classes = [CheckTokenForAllMicroservices]
+    parser_classes = [EncryptJSONParser]
+    renderer_classes = [EncryptJSONRenderer]
 
     def get(self, request):
         """Отдача данных о пользователе"""
