@@ -59,7 +59,10 @@ class RegistrateUserView(APIView):
             Q(username=data['username']) | Q(email=data['email']),
         ).first()
         if user:
-            return Response(status=status.HTTP_200_OK, data={'success': False})
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST,
+                data={'username': ['Такое имя пользователя или email уже существует']},
+            )
 
         user = user_model.objects.create_user(
             username=data['username'],
