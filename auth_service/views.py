@@ -14,6 +14,7 @@ from auth_service.serializers import (
     LoginUserSerializer,
     RegistrateUserSerializer,
 )
+from auth_service.utils import get_hash
 
 
 class LoginUserView(APIView):
@@ -82,7 +83,8 @@ class LoginOrRegistrateUserByExternServiceView(APIView):
         serializer = LoginOrRegistrateUserByExternServiceSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        extern_user = ExternAuthUser.objects.filter(extern_id=data['extern_id']).first()
+        extern_id = get_hash(data['extern_id'])
+        extern_user = ExternAuthUser.objects.filter(extern_id=extern_id).first()
         if extern_user:
             user = extern_user.user
         else:
@@ -94,7 +96,7 @@ class LoginOrRegistrateUserByExternServiceView(APIView):
                 last_name=data['last_name'],
                 password='',
             )
-            ExternAuthUser(user=user, extern_id=data['extern_id']).save()
+            ExternAuthUser(user=user, extern_id=extern_id).save()
 
         responsed_data = {
             'success': True,

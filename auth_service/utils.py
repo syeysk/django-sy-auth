@@ -1,4 +1,5 @@
 import base64
+from hashlib import blake2b
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.backends import default_backend
@@ -29,3 +30,11 @@ def decrypt_text(encoded_text: str):
     fernet = create_fernet(settings.API_SECRET_KEY.encode(), settings.API_SALT.encode())
     base = base64.b64decode(encoded_text)
     return fernet.decrypt(base).decode('utf8')
+
+
+def get_hash(token: str):
+    return blake2b(
+        token.encode('utf-8'),
+        digest_size=64,
+        salt=settings.SALT.encode('utf-8'),
+    ).hexdigest()

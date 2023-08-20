@@ -11,6 +11,7 @@ DEBUG = env('DEBUG')
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['*'])
 SITE_URL = env.str('SITE_URL', default='http://127.0.0.1')
 SECRET_KEY = env('SECRET_KEY')
+SALT = env('SALT')
 API_SALT = env('API_SALT')
 API_SECRET_KEY = env('API_SECRET_KEY')
 ROOT_URLCONF = 'server.urls'
