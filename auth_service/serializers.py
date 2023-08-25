@@ -26,8 +26,8 @@ class LoginOrRegistrateUserByExternServiceSerializer(serializers.ModelSerializer
 
 
 class UserPutSerializer(serializers.ModelSerializer):
-    current_username = serializers.CharField(max_length=150)
+    current_username = serializers.CharField(max_length=150, read_only=True)
 
     class Meta:
         model = get_user_model()
-        fields = ['current_username', 'username', 'email', 'first_name', 'last_name']
+        fields = ['current_username', 'username', 'first_name', 'last_name']

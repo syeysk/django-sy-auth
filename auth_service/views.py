@@ -144,7 +144,7 @@ class UserView(APIView):
         serializer.is_valid(raise_exception=True)
         updated_fields = [
             name for name, value in serializer.validated_data.items()
-            if getattr(instance, name) != value or name != 'current_username'
+            if name != 'current_username' and getattr(instance, name) != value
         ]
         serializer.save()
         responsed_data = {
