@@ -125,9 +125,10 @@ class UserView(APIView):
 
     def get(self, request):
         """Отдача данных о пользователе"""
-        user = get_object_or_404(get_user_model(), username=request.data['username'])
+        user = get_object_or_404(get_user_model(), microservice_auth_id=request.data['microservice_auth_id'])
         responsed_data = {
             'success': True,
+            'username': user.username,
             'last_name': user.last_name,
             'first_name': user.first_name,
             'is_staff': user.is_staff,
@@ -139,7 +140,7 @@ class UserView(APIView):
 
     def put(self, request):
         """Редактирование данных о пользователе"""
-        instance = get_object_or_404(get_user_model(), username=request.data['current_username'])
+        instance = get_object_or_404(get_user_model(), microservice_auth_id=request.data['microservice_auth_id'])
         serializer = UserPutSerializer(instance, data=request.data)
         serializer.is_valid(raise_exception=True)
         updated_fields = [
@@ -155,7 +156,7 @@ class UserView(APIView):
 
     def delete(self, request):
         """Удаление пользователя"""
-        user = get_object_or_404(get_user_model(), username=request.data['username'])
+        user = get_object_or_404(get_user_model(), microservice_auth_id=request.data['microservice_auth_id'])
         user.delete()
         responsed_data = {
             'success': True,
