@@ -116,6 +116,7 @@ MICROSERVICES_TOKENS = {
     'from_platform': env('MICROSERVICE_TOKEN_FROM_PLATFORM'),
     'from_faci': env('MICROSERVICE_TOKEN_FROM_FACI'),
     'from_notes': env('MICROSERVICE_TOKEN_FROM_NOTES'),
+    'from_social': env('MICROSERVICE_TOKEN_FROM_SOCIAL'),
 }
 MICROSERVICES_URLS = {
 }
