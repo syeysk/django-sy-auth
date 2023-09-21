@@ -2,7 +2,7 @@
 __pycache__/
 *.py[cod]
 passenger_wsgi.py
-sqlite3.db
+*.db
 server/tmp/restart.txt
 .env
 debug.log
