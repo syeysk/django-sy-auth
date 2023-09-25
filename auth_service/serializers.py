@@ -11,6 +11,12 @@ class LoginUserSerializer(serializers.ModelSerializer):
 
 
 class RegistrateUserSerializer(serializers.ModelSerializer):
+    def validate_password(self, value):
+        if len(value) < 10:
+            raise serializers.ValidationError("A password must have length more 10 symbols")
+
+        return value
+
     class Meta:
         model = get_user_model()
         fields = ['username', 'password', 'email', 'first_name', 'last_name']
