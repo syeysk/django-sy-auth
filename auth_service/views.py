@@ -6,7 +6,7 @@ from rest_framework import status
 from rest_framework.response import Response
 
 from auth_service.authentication import TokenAuthentication
-from auth_service.models import ExternAuthUser
+from auth_service.models import DeletedUsers, ExternAuthUser
 from auth_service.parsers import EncryptJSONParser
 from auth_service.permissions import CheckTokenForAllMicroservices
 from auth_service.renderers import EncryptJSONRenderer
@@ -34,7 +34,7 @@ class LoginUserView(APIView):
         if not user:
             return Response(status=status.HTTP_200_OK, data={'success': False})
 
-        responsed_data = {
+        response_data = {
             'success': True,
             'microservice_auth_id': user.microservice_auth_id,
             'last_name': user.last_name,
@@ -43,7 +43,7 @@ class LoginUserView(APIView):
             'is_active': user.is_active,
             'is_superuser': user.is_superuser,
         }
-        return Response(status=status.HTTP_200_OK, data=responsed_data)
+        return Response(status=status.HTTP_200_OK, data=response_data)
 
 
 class RegistrateUserView(APIView):
@@ -74,8 +74,8 @@ class RegistrateUserView(APIView):
             last_name=data['last_name'],
             password=data['password'],
         )
-        responsed_data = {'success': True, 'microservice_auth_id': user.microservice_auth_id}
-        return Response(status=status.HTTP_200_OK, data=responsed_data)
+        response_data = {'success': True, 'microservice_auth_id': user.microservice_auth_id}
+        return Response(status=status.HTTP_200_OK, data=response_data)
 
 
 class LoginOrRegistrateUserByExternServiceView(APIView):
@@ -104,7 +104,7 @@ class LoginOrRegistrateUserByExternServiceView(APIView):
             )
             ExternAuthUser(user=user, extern_id=extern_id).save()
 
-        responsed_data = {
+        response_data = {
             'success': True,
             'microservice_auth_id': user.microservice_auth_id,
             'last_name': user.last_name,
@@ -114,7 +114,7 @@ class LoginOrRegistrateUserByExternServiceView(APIView):
             'is_superuser': user.is_superuser,
             'username': user.username,
         }
-        return Response(status=status.HTTP_200_OK, data=responsed_data)
+        return Response(status=status.HTTP_200_OK, data=response_data)
 
 
 class UserView(APIView):
@@ -126,7 +126,7 @@ class UserView(APIView):
     def get(self, request):
         """Отдача данных о пользователе"""
         user = get_object_or_404(get_user_model(), microservice_auth_id=request.data['microservice_auth_id'])
-        responsed_data = {
+        response_data = {
             'success': True,
             'username': user.username,
             'last_name': user.last_name,
@@ -136,7 +136,7 @@ class UserView(APIView):
             'is_superuser': user.is_superuser,
             'email': user.email,
         }
-        return Response(status=status.HTTP_200_OK, data=responsed_data)
+        return Response(status=status.HTTP_200_OK, data=response_data)
 
     def put(self, request):
         """Редактирование данных о пользователе"""
@@ -148,17 +148,21 @@ class UserView(APIView):
             if name != 'current_username' and getattr(instance, name) != value
         ]
         serializer.save()
-        responsed_data = {
+        response_data = {
             'success': True,
             'updated_fields': updated_fields,
         }
-        return Response(status=status.HTTP_200_OK, data=responsed_data)
+        return Response(status=status.HTTP_200_OK, data=response_data)
 
     def delete(self, request):
         """Удаление пользователя"""
         user = get_object_or_404(get_user_model(), microservice_auth_id=request.data['microservice_auth_id'])
-        user.delete()
-        responsed_data = {
+        DeletedUsers(microservice_auth_id=user.microservice_auth_id).save()
+        user.is_active = False
+        user.is_staff = False
+        user.is_superuser = False
+        user.save()
+        response_data = {
             'success': True,
         }
-        return Response(status=status.HTTP_200_OK, data=responsed_data)
+        return Response(status=status.HTTP_200_OK, data=response_data)

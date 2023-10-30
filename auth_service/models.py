@@ -30,3 +30,17 @@ class AuthUser(AbstractUser):
 class ExternAuthUser(models.Model):
     user = models.OneToOneField(get_user_model(), null=False, on_delete=models.CASCADE, primary_key=True)
     extern_id = models.CharField(null=False, blank=False, unique=True, max_length=128)
+
+
+class DeletedUsers(models.Model):
+    STEP_MARKED = 1
+    STEP_DELETED = 2
+    STEP_CHOICES = (
+        ('marked', STEP_MARKED),
+        ('deleted', STEP_DELETED),
+    )
+    dt_delete = models.DateTimeField(auto_now_add=True)
+    microservice_auth_id = models.UUIDField(
+        'Глобальный ID удалённого пользователя', null=False, blank=False, unique=True,
+    )
+    step = models.IntegerField(choices=STEP_CHOICES, default=STEP_MARKED)
