@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
@@ -5,10 +6,10 @@ from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.response import Response
 
-from auth_service.authentication import TokenAuthentication
-from auth_service.models import DeletedUsers, ExternAuthUser
-from auth_service.parsers import EncryptJSONParser
-from auth_service.permissions import CheckTokenForAllMicroservices
+from auth_service.authentication import TempTokenAuthentication
+from auth_service.models import DeletedUsers, ExternAuthUser, TempToken
+from auth_service.parsers import EncryptJSONParser, TempTokenEncryptJSONParser
+from auth_service.permissions import CheckTempToken
 from auth_service.renderers import EncryptJSONRenderer
 from auth_service.serializers import (
     LoginOrRegistrateUserByExternServiceSerializer,
@@ -16,12 +17,32 @@ from auth_service.serializers import (
     RegistrateUserSerializer,
     UserPutSerializer,
 )
-from auth_service.utils import get_hash
+from auth_service.utils import generate_keys, get_hash
+
+
+class PublicKeyView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    def get(self, request):
+        import os.path
+        if os.path.exists('public_key'):
+            with open('public_key', 'rb') as file_public_key:
+                public_key = file_public_key.read()
+        else:
+            private_key, public_key = generate_keys()
+            with open('public_key', 'wb') as file_public_key:
+                file_public_key.write(public_key)
+
+            with open('private_key', 'wb') as file_private_key:
+                file_private_key.write(private_key)
+
+        return Response(status=status.HTTP_200_OK, data={'public_key': public_key})
 
 
 class LoginUserView(APIView):
-    authentication_classes = [TokenAuthentication]
-    permission_classes = [CheckTokenForAllMicroservices]
+    authentication_classes = []
+    permission_classes = []
     parser_classes = [EncryptJSONParser]
     renderer_classes = [EncryptJSONRenderer]
 
@@ -32,23 +53,24 @@ class LoginUserView(APIView):
         data = serializer.validated_data
         user = authenticate(request, username=data['username'], password=data['password'])
         if not user:
-            return Response(status=status.HTTP_200_OK, data={'success': False})
+            return Response(status=status.HTTP_400_BAD_REQUEST, data={'password': ['неверный логин или пароль']})
 
+        token, _ = TempToken.objects.create_token(user.microservice_auth_id)
         response_data = {
-            'success': True,
             'microservice_auth_id': user.microservice_auth_id,
             'last_name': user.last_name,
             'first_name': user.first_name,
             'is_staff': user.is_staff,
             'is_active': user.is_active,
             'is_superuser': user.is_superuser,
+            'token': token,
         }
         return Response(status=status.HTTP_200_OK, data=response_data)
 
 
 class RegistrateUserView(APIView):
-    authentication_classes = [TokenAuthentication]
-    permission_classes = [CheckTokenForAllMicroservices]
+    authentication_classes = []
+    permission_classes = []
     parser_classes = [EncryptJSONParser]
     renderer_classes = [EncryptJSONRenderer]
 
@@ -74,13 +96,14 @@ class RegistrateUserView(APIView):
             last_name=data['last_name'],
             password=data['password'],
         )
-        response_data = {'success': True, 'microservice_auth_id': user.microservice_auth_id}
+        token, _ = TempToken.objects.create_token(user.microservice_auth_id)
+        response_data = {'microservice_auth_id': user.microservice_auth_id, 'token': token}
         return Response(status=status.HTTP_200_OK, data=response_data)
 
 
 class LoginOrRegistrateUserByExternServiceView(APIView):
-    authentication_classes = [TokenAuthentication]
-    permission_classes = [CheckTokenForAllMicroservices]
+    authentication_classes = []
+    permission_classes = []
     parser_classes = [EncryptJSONParser]
     renderer_classes = [EncryptJSONRenderer]
 
@@ -89,6 +112,19 @@ class LoginOrRegistrateUserByExternServiceView(APIView):
         serializer = LoginOrRegistrateUserByExternServiceSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
+        if data.get('old_token') not in set(settings.MICROSERVICES_TOKENS.values()):
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST,
+                data={
+                    'old_token': [
+                        (
+                            'не указан устаревший токен. Для получения старого токена, пожалуйста, обратитесь'
+                            ' к администратору микроcервиса авторизации'
+                        )
+                    ],
+                },
+            )
+
         extern_id = get_hash(data['extern_id'])
         extern_user = ExternAuthUser.objects.filter(extern_id=extern_id).first()
         if extern_user:
@@ -104,8 +140,8 @@ class LoginOrRegistrateUserByExternServiceView(APIView):
             )
             ExternAuthUser(user=user, extern_id=extern_id).save()
 
+        token, _ = TempToken.objects.create_token(user.microservice_auth_id)
         response_data = {
-            'success': True,
             'microservice_auth_id': user.microservice_auth_id,
             'last_name': user.last_name,
             'first_name': user.first_name,
@@ -113,21 +149,21 @@ class LoginOrRegistrateUserByExternServiceView(APIView):
             'is_active': user.is_active,
             'is_superuser': user.is_superuser,
             'username': user.username,
+            'token': token,
         }
         return Response(status=status.HTTP_200_OK, data=response_data)
 
 
 class UserView(APIView):
-    authentication_classes = [TokenAuthentication]
-    permission_classes = [CheckTokenForAllMicroservices]
-    parser_classes = [EncryptJSONParser]
+    authentication_classes = [TempTokenAuthentication]
+    permission_classes = [CheckTempToken]
+    parser_classes = [TempTokenEncryptJSONParser]
     renderer_classes = [EncryptJSONRenderer]
 
     def get(self, request):
         """Отдача данных о пользователе"""
         user = get_object_or_404(get_user_model(), microservice_auth_id=request.data['microservice_auth_id'])
         response_data = {
-            'success': True,
             'username': user.username,
             'last_name': user.last_name,
             'first_name': user.first_name,
@@ -141,7 +177,7 @@ class UserView(APIView):
     def put(self, request):
         """Редактирование данных о пользователе"""
         instance = get_object_or_404(get_user_model(), microservice_auth_id=request.data['microservice_auth_id'])
-        serializer = UserPutSerializer(instance, data=request.data)
+        serializer = UserPutSerializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         updated_fields = [
             name for name, value in serializer.validated_data.items()
@@ -149,7 +185,6 @@ class UserView(APIView):
         ]
         serializer.save()
         response_data = {
-            'success': True,
             'updated_fields': updated_fields,
         }
         return Response(status=status.HTTP_200_OK, data=response_data)
@@ -162,7 +197,4 @@ class UserView(APIView):
         user.is_staff = False
         user.is_superuser = False
         user.save()
-        response_data = {
-            'success': True,
-        }
-        return Response(status=status.HTTP_200_OK, data=response_data)
+        return Response(status=status.HTTP_200_OK, data={})

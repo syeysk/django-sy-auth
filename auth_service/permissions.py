@@ -1,7 +1,12 @@
-from django.conf import settings
 from rest_framework.permissions import BasePermission
 
+from auth_service.models import TempToken
 
-class CheckTokenForAllMicroservices(BasePermission):
+
+class CheckTempToken(BasePermission):
     def has_permission(self, request, view):
-        return request.auth in set(settings.MICROSERVICES_TOKENS.values())  # TODO: реализовать нормально!
+        print(TempToken.objects.authenticate(request.user.microservice_auth_id, request.auth), request.user)
+        return (
+            not request.user.is_anonymous
+            and TempToken.objects.authenticate(request.user.microservice_auth_id, request.auth)
+        )
