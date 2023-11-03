@@ -109,10 +109,7 @@ class LoginOrRegistrateUserByExternServiceView(APIView):
 
     def post(self, request):
         """Авторизация либо регистрация пользователя через внешний сервис"""
-        serializer = LoginOrRegistrateUserByExternServiceSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
-        if data.get('old_token') not in set(settings.MICROSERVICES_TOKENS.values()):
+        if request.data.get('old_token') not in set(settings.MICROSERVICES_TOKENS.values()):
             return Response(
                 status=status.HTTP_400_BAD_REQUEST,
                 data={
@@ -125,6 +122,9 @@ class LoginOrRegistrateUserByExternServiceView(APIView):
                 },
             )
 
+        serializer = LoginOrRegistrateUserByExternServiceSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
         extern_id = get_hash(data['extern_id'])
         extern_user = ExternAuthUser.objects.filter(extern_id=extern_id).first()
         if extern_user:
