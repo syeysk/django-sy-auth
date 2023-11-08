@@ -2,6 +2,8 @@ from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
+from drf_spectacular.extensions import OpenApiAuthenticationExtension
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
 from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.response import Response
@@ -17,9 +19,17 @@ from auth_service.serializers import (
     RegistrateUserSerializer,
     UserPutSerializer,
 )
+from auth_service.serializers_response import (
+    PublicKeyViewSerializer,
+)
 from auth_service.utils import generate_keys, get_hash
 
 
+@extend_schema(
+    tags=['1. Ключи'],
+    responses={200: PublicKeyViewSerializer},
+    summary='Получение открытого ключа для шифрования последующих запросов',
+)
 class PublicKeyView(APIView):
     authentication_classes = []
     permission_classes = []
@@ -40,6 +50,13 @@ class PublicKeyView(APIView):
         return Response(status=status.HTTP_200_OK, data={'public_key': public_key})
 
 
+@extend_schema(
+    tags=['2. Временный токен'],
+    parameters=[
+        LoginUserSerializer,
+    ],
+    summary='Авторизовать пользователя через логин/пароль',
+)
 class LoginUserView(APIView):
     authentication_classes = []
     permission_classes = []
@@ -68,6 +85,13 @@ class LoginUserView(APIView):
         return Response(status=status.HTTP_200_OK, data=response_data)
 
 
+@extend_schema(
+    tags=['2. Временный токен'],
+    parameters=[
+        RegistrateUserSerializer,
+    ],
+    summary='Зарегистрировать и затем авторизовать пользователя ',
+)
 class RegistrateUserView(APIView):
     authentication_classes = []
     permission_classes = []
@@ -101,6 +125,19 @@ class RegistrateUserView(APIView):
         return Response(status=status.HTTP_200_OK, data=response_data)
 
 
+@extend_schema(
+    tags=['2. Временный токен'],
+    parameters=[
+        OpenApiParameter(
+            name='old_token',
+            description='Токен старого типа. Это единственный токен, выдаваемый администратором вручную.',
+            required=True,
+            type=str,
+        ),
+        LoginOrRegistrateUserByExternServiceSerializer,
+    ],
+    summary='Авторизовать пользователя через Google',
+)
 class LoginOrRegistrateUserByExternServiceView(APIView):
     authentication_classes = []
     permission_classes = []
@@ -160,6 +197,19 @@ class UserView(APIView):
     parser_classes = [TempTokenEncryptJSONParser]
     renderer_classes = [EncryptJSONRenderer]
 
+    @extend_schema(
+        tags=['3. Пользователь'],
+        parameters=[
+            OpenApiParameter(
+                name='microservice_auth_id',
+                description='Глобальный идентификатор пользователя',
+                location='body',
+                required=True,
+                type=str,
+            ),
+        ],
+        summary='Получить данные пользователя',
+    )
     def get(self, request):
         """Отдача данных о пользователе"""
         user = get_object_or_404(get_user_model(), microservice_auth_id=request.data['microservice_auth_id'])
@@ -174,6 +224,13 @@ class UserView(APIView):
         }
         return Response(status=status.HTTP_200_OK, data=response_data)
 
+    @extend_schema(
+        tags=['3. Пользователь'],
+        parameters=[
+            UserPutSerializer,
+        ],
+        summary='Изменить данные пользователя',
+    )
     def put(self, request):
         """Редактирование данных о пользователе"""
         instance = get_object_or_404(get_user_model(), microservice_auth_id=request.data['microservice_auth_id'])
@@ -189,6 +246,18 @@ class UserView(APIView):
         }
         return Response(status=status.HTTP_200_OK, data=response_data)
 
+    @extend_schema(
+        tags=['3. Пользователь'],
+        parameters=[
+            OpenApiParameter(
+                name='microservice_auth_id',
+                description='Глобальный идентификатор пользователя',
+                required=True,
+                type=str,
+            ),
+        ],
+        summary='Удалить пользователя',
+    )
     def delete(self, request):
         """Удаление пользователя"""
         user = get_object_or_404(get_user_model(), microservice_auth_id=request.data['microservice_auth_id'])
