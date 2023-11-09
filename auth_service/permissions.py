@@ -5,7 +5,6 @@ from auth_service.models import TempToken
 
 class CheckTempToken(BasePermission):
     def has_permission(self, request, view):
-        print(TempToken.objects.authenticate(request.user.microservice_auth_id, request.auth), request.user)
         return (
             not request.user.is_anonymous
             and TempToken.objects.authenticate(request.user.microservice_auth_id, request.auth)

@@ -8,7 +8,6 @@ from auth_service.utils import encrypt
 
 class EncryptJSONRenderer(JSONRenderer):
     def render(self, data, accepted_media_type=None, renderer_context=None):
-        print('OUTPUT:', data)
         request = renderer_context['request']
         with open('public_key', 'rb') as file_public_key:
             auth_public_key = file_public_key.read()

@@ -1,4 +1,5 @@
 import base64
+import json
 from hashlib import blake2b
 
 from cryptography.fernet import Fernet
@@ -107,3 +108,14 @@ def get_hash(token: str, digest_size=64):
         digest_size=digest_size,
         salt=settings.SALT.encode('utf-8'),
     ).hexdigest()
+
+
+def decrypt_request_body(json_data, request):
+    with open('private_key', 'rb') as file_private_key:
+        private_key = load_private_key(file_private_key.read())
+
+    decrypted_json = decrypt(json_data['data'], private_key)
+    decrypted_data = json.loads(decrypted_json)
+    del decrypted_data['random_trash']
+    request.public_key = load_public_key(decrypted_data.pop('public_key').encode())
+    return decrypted_data
