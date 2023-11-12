@@ -1,3 +1,4 @@
+import requests
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from django.db.models import Q
@@ -15,6 +16,7 @@ from auth_service.permissions import CheckTempToken
 from auth_service.renderers import EncryptJSONRenderer
 from auth_service.serializers import (
     LoginOrRegistrateUserByExternServiceSerializer,
+    LoginOrRegistrateUserByExternServiceSerializerOld,
     LoginUserSerializer,
     RegistrateUserSerializer,
     UserPutSerializer,
@@ -146,33 +148,64 @@ class LoginOrRegistrateUserByExternServiceView(APIView):
 
     def post(self, request):
         """Авторизация либо регистрация пользователя через внешний сервис"""
-        if request.data.get('old_token') not in set(settings.MICROSERVICES_TOKENS.values()):
-            return Response(
-                status=status.HTTP_400_BAD_REQUEST,
-                data={
-                    'old_token': [
-                        (
-                            'не указан устаревший токен. Для получения старого токена, пожалуйста, обратитесь'
-                            ' к администратору микроcервиса авторизации'
-                        )
-                    ],
-                },
-            )
+        old_token = request.data.get('old_token')
+        if old_token:
+            if old_token not in set(settings.MICROSERVICES_TOKENS.values()):
+                return Response(
+                    status=status.HTTP_400_BAD_REQUEST,
+                    data={
+                        'old_token': [
+                            (
+                                'не указан устаревший токен. Для получения старого токена, пожалуйста, обратитесь'
+                                ' к администратору микроcервиса авторизации'
+                            )
+                        ],
+                    },
+                )
 
-        serializer = LoginOrRegistrateUserByExternServiceSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
-        extern_id = get_hash(data['extern_id'])
+            serializer = LoginOrRegistrateUserByExternServiceSerializerOld(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            user_data = serializer.validated_data
+        else:
+            serializer = LoginOrRegistrateUserByExternServiceSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            data = serializer.validated_data
+            extern_service = data['extern_service']
+            if data['extern_service'] == 'google':
+                params = {
+                    'access_token': data['extern_token'],
+                    'id_token': data['extra']['id_token'],
+                    'token_type': 'Bearer',
+                    'expires_in': 3599,
+                }
+                response = requests.get('https://www.googleapis.com/oauth2/v1/userinfo', params=params)
+                user_info = response.json()
+                if not user_info['verified_email']:
+                    response_data = {'message': 'E-mail в учётной записи Google не подтверждён. Пожалуйста, подтвердите e-mail и попробуйте авторизоваться вновь.'}
+                    return Response(status=status.HTTP_400_BAD_REQUEST, data=response_data)
+
+                user_data = {
+                    'username': '{}-{}'.format(user_info['email'].split('@')[0], user_info['id'][-10:]),
+                    'email': user_info['email'],
+                    'first_name': user_info.get('given_name', ''),
+                    'last_name': user_info.get('family_name', ''),
+                    'extern_id': '{}-{}'.format(extern_service, user_info['id']),
+                }
+            else:
+                response_data = {'message': 'Invalid "extern_service"'}
+                return Response(status=status.HTTP_400_BAD_REQUEST, data=response_data)
+
+        extern_id = get_hash(user_data['extern_id'])
         extern_user = ExternAuthUser.objects.filter(extern_id=extern_id).first()
         if extern_user:
             user = extern_user.user
         else:
             user_model = get_user_model()
             user = user_model.objects.create_user(
-                username=data['username'],
-                email=data['email'],
-                first_name=data['first_name'],
-                last_name=data['last_name'],
+                username=user_data['username'],
+                email=user_data['email'],
+                first_name=user_data['first_name'],
+                last_name=user_data['last_name'],
                 password='',
             )
             ExternAuthUser(user=user, extern_id=extern_id).save()

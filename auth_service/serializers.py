@@ -22,13 +22,30 @@ class RegistrateUserSerializer(serializers.ModelSerializer):
         fields = ['username', 'password', 'email', 'first_name', 'last_name']
 
 
-class LoginOrRegistrateUserByExternServiceSerializer(serializers.ModelSerializer):
+class LoginOrRegistrateUserByExternServiceSerializerOld(serializers.ModelSerializer):
     username = serializers.CharField(required=True, max_length=150)
     extern_id = serializers.CharField(required=True, allow_null=False, allow_blank=False, max_length=128)
 
     class Meta:
         model = get_user_model()
         fields = ['username', 'email', 'first_name', 'last_name', 'extern_id']
+
+
+class LoginOrRegistrateUserByExternServiceGoogleSerializer(serializers.Serializer):
+    id_token = serializers.CharField(required=True, allow_null=False, allow_blank=False, max_length=150)
+
+
+class LoginOrRegistrateUserByExternServiceSerializer(serializers.Serializer):
+    extern_service = serializers.CharField(required=True, allow_null=False, allow_blank=False, max_length=150)
+    extern_token = serializers.CharField(required=True, allow_null=False, allow_blank=False, max_length=150)
+
+    def validate(self, data):
+        if data['extern_service'] == 'google':
+            serializer = LoginOrRegistrateUserByExternServiceGoogleSerializer(data=data['extra'])
+            serializer.is_valid(raise_exception=True)
+            data['extra'] = serializer.validated_data
+
+        return data
 
 
 class UserPutSerializer(serializers.ModelSerializer):
