@@ -38,7 +38,7 @@ class LoginOrRegistrateUserByExternServiceGoogleSerializer(serializers.Serialize
 class LoginOrRegistrateUserByExternServiceSerializer(serializers.Serializer):
     extern_service = serializers.CharField(required=True, allow_null=False, allow_blank=False, max_length=150)
     extern_token = serializers.CharField(required=True, allow_null=False, allow_blank=False, max_length=500)
-    extra = serializers.JSONField(required=True, allow_null=False, allow_blank=False)
+    extra = serializers.JSONField(required=True, allow_null=False)
 
     def validate(self, data):
         if data['extern_service'] == 'google':
