@@ -32,7 +32,7 @@ class LoginOrRegistrateUserByExternServiceSerializerOld(serializers.ModelSeriali
 
 
 class LoginOrRegistrateUserByExternServiceGoogleSerializer(serializers.Serializer):
-    id_token = serializers.CharField(required=True, allow_null=False, allow_blank=False, max_length=500)
+    id_token = serializers.CharField(required=True, allow_null=False, allow_blank=False, max_length=5000)
 
 
 class LoginOrRegistrateUserByExternServiceSerializer(serializers.Serializer):
