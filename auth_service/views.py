@@ -2,9 +2,7 @@ import requests
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from django.db.models import Q
-from django.shortcuts import get_object_or_404
-from drf_spectacular.extensions import OpenApiAuthenticationExtension
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.response import Response
@@ -18,13 +16,24 @@ from auth_service.serializers import (
     LoginOrRegistrateUserByExternServiceSerializer,
     LoginOrRegistrateUserByExternServiceSerializerOld,
     LoginUserSerializer,
+    LoginUserByEmailSerializer,
     RegistrateUserSerializer,
     UserPutSerializer,
+    SearchUserSerializer,
+    RequiredParamsMixin,
 )
 from auth_service.serializers_response import (
     PublicKeyViewSerializer,
 )
 from auth_service.utils import generate_keys, get_hash
+
+
+parameter_microservice_auth_id = OpenApiParameter(
+    name='microservice_auth_id',
+    description='Глобальный идентификатор пользователя',
+    required=True,
+    type=str,
+)
 
 
 @extend_schema(
@@ -54,10 +63,8 @@ class PublicKeyView(APIView):
 
 @extend_schema(
     tags=['2. Временный токен'],
-    parameters=[
-        LoginUserSerializer,
-    ],
-    summary='Авторизовать пользователя через логин/пароль',
+    request=LoginUserSerializer,
+    summary='Авторизовать пользователя через логин/пароль (нерекомендуемый метод, будет удалён в следующих версиях)',
 )
 class LoginUserView(APIView):
     authentication_classes = []
@@ -89,9 +96,41 @@ class LoginUserView(APIView):
 
 @extend_schema(
     tags=['2. Временный токен'],
-    parameters=[
-        RegistrateUserSerializer,
-    ],
+    request=LoginUserByEmailSerializer,
+    summary='Авторизовать пользователя через электронную почту и пароль',
+)
+class LoginUserByEmailView(APIView):
+    authentication_classes = []
+    permission_classes = []
+    parser_classes = [EncryptJSONParser]
+    renderer_classes = [EncryptJSONRenderer]
+
+    def post(self, request):
+        """Авторизация пользователя"""
+        serializer = LoginUserByEmailSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        user = authenticate(request, username=data['email'], password=data['password'])
+        if not user:
+            return Response(status=status.HTTP_400_BAD_REQUEST, data={'password': ['неверная почта или пароль']})
+
+        token, _ = TempToken.objects.create_token(user.microservice_auth_id)
+        response_data = {
+            'microservice_auth_id': user.microservice_auth_id,
+            'last_name': user.last_name,
+            'first_name': user.first_name,
+            'is_staff': user.is_staff,
+            'is_active': user.is_active,
+            'is_superuser': user.is_superuser,
+            'token': token,
+            'username': user.username,
+        }
+        return Response(status=status.HTTP_200_OK, data=response_data)
+
+
+@extend_schema(
+    tags=['2. Временный токен'],
+    request=RegistrateUserSerializer,
     summary='Зарегистрировать и затем авторизовать пользователя ',
 )
 class RegistrateUserView(APIView):
@@ -106,13 +145,11 @@ class RegistrateUserView(APIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
         user_model = get_user_model()
-        user = user_model.objects.filter(
-            Q(username=data['username']) | Q(email=data['email']),
-        ).first()
+        user = user_model.objects.filter(email=data['email']).first()
         if user:
             return Response(
                 status=status.HTTP_400_BAD_REQUEST,
-                data={'username': ['Такое имя пользователя или email уже существует']},
+                data={'username': ['Пользователь с таким email уже существует']},
             )
 
         user = user_model.objects.create_user(
@@ -136,8 +173,8 @@ class RegistrateUserView(APIView):
             required=True,
             type=str,
         ),
-        LoginOrRegistrateUserByExternServiceSerializer,
     ],
+    request=LoginOrRegistrateUserByExternServiceSerializer,
     summary='Авторизовать пользователя через Google',
 )
 class LoginOrRegistrateUserByExternServiceView(APIView):
@@ -185,7 +222,7 @@ class LoginOrRegistrateUserByExternServiceView(APIView):
                     return Response(status=status.HTTP_400_BAD_REQUEST, data=response_data)
 
                 user_data = {
-                    'username': '{}-{}'.format(user_info['email'].split('@')[0], user_info['id'][-10:]),
+                    'username': user_info['email'].split('@')[0],
                     'email': user_info['email'],
                     'first_name': user_info.get('given_name', ''),
                     'last_name': user_info.get('family_name', ''),
@@ -232,20 +269,12 @@ class UserView(APIView):
 
     @extend_schema(
         tags=['3. Пользователь'],
-        parameters=[
-            OpenApiParameter(
-                name='microservice_auth_id',
-                description='Глобальный идентификатор пользователя',
-                location='body',
-                required=True,
-                type=str,
-            ),
-        ],
+        request=RequiredParamsMixin,
         summary='Получить данные пользователя',
     )
     def get(self, request):
         """Отдача данных о пользователе"""
-        user = get_object_or_404(get_user_model(), microservice_auth_id=request.data['microservice_auth_id'])
+        user = request.user
         response_data = {
             'username': user.username,
             'last_name': user.last_name,
@@ -260,13 +289,15 @@ class UserView(APIView):
     @extend_schema(
         tags=['3. Пользователь'],
         parameters=[
-            UserPutSerializer,
+            parameter_microservice_auth_id,
         ],
+        request=type('UserPutSerializerWithMixin', (RequiredParamsMixin, UserPutSerializer), {}),
+        # request=UserPutSerializer,
         summary='Изменить данные пользователя',
     )
     def put(self, request):
         """Редактирование данных о пользователе"""
-        instance = get_object_or_404(get_user_model(), microservice_auth_id=request.data['microservice_auth_id'])
+        instance = request.user
         serializer = UserPutSerializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         updated_fields = [
@@ -282,21 +313,44 @@ class UserView(APIView):
     @extend_schema(
         tags=['3. Пользователь'],
         parameters=[
-            OpenApiParameter(
-                name='microservice_auth_id',
-                description='Глобальный идентификатор пользователя',
-                required=True,
-                type=str,
-            ),
+            parameter_microservice_auth_id,
         ],
         summary='Удалить пользователя',
     )
     def delete(self, request):
         """Удаление пользователя"""
-        user = get_object_or_404(get_user_model(), microservice_auth_id=request.data['microservice_auth_id'])
+        user = request.user
         DeletedUsers(microservice_auth_id=user.microservice_auth_id).save()
         user.is_active = False
         user.is_staff = False
         user.is_superuser = False
         user.save()
         return Response(status=status.HTTP_200_OK, data={})
+
+
+class SearchUserView(APIView):
+    authentication_classes = [TempTokenAuthentication]
+    permission_classes = [CheckTempToken]
+    parser_classes = [TempTokenEncryptJSONParser]
+    renderer_classes = [EncryptJSONRenderer]
+
+    @extend_schema(
+        tags=['4. Прочие методы'],
+        parameters=[
+            parameter_microservice_auth_id,
+        ],
+        request=SearchUserSerializer,
+        summary='Поиск пользователя',
+    )
+    def post(self, request):
+        serializer = SearchUserSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        search_string = serializer.validated_data['search_string']
+        query = (
+                    Q(username__contains=search_string)
+                    | Q(last_name__contains=search_string)
+                    | Q(first_name__contains=search_string)
+                    | Q(email__contains=search_string)
+        )
+        usernames = get_user_model().objects.filter(query).values('username', 'last_name', 'first_name')[:10]
+        return Response(status=status.HTTP_200_OK, data=usernames)

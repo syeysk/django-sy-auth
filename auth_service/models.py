@@ -5,6 +5,9 @@ from secrets import token_urlsafe
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractUser, UserManager
 from django.db import models
+from django.utils.translation import gettext_lazy as _
+
+from auth_service.validators import UnicodeUsernameValidator
 
 from auth_service.utils import get_hash
 
@@ -39,6 +42,24 @@ class TempTokenManager(models.Manager):
 
 
 class AuthUser(AbstractUser):
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = []
+    username_validator = UnicodeUsernameValidator()
+
+    email = models.EmailField(
+        _("email address"),
+        blank=False,
+        unique=True,
+        error_messages={
+            'unique': _("A user with that email already exists."),
+        },
+    )
+    username = models.CharField(
+        _('username'),
+        max_length=150,
+        help_text=_('Required. 150 characters or fewer. Letters, digits and ./+/-/_ only.'),
+        validators=[username_validator],
+    )
     microservice_auth_id = models.UUIDField(
         'Глобальный ID пользователя', null=False, blank=False, unique=True,
     )
@@ -46,6 +67,12 @@ class AuthUser(AbstractUser):
     objects = AuthUserManager()
 
     class Meta(AbstractUser.Meta):
+        indexes = [
+            models.Index(fields=['username'], name='auth_user_username'),
+            models.Index(fields=['first_name'], name='auth_user_first_name'),
+            models.Index(fields=['last_name'], name='auth_user_last_name'),
+            models.Index(fields=['email'], name='auth_user_email'),
+        ]
         verbose_name = 'Пользователь'
         verbose_name_plural = 'Пользователи'
 

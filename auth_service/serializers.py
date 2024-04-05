@@ -2,12 +2,28 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 
+class RequiredParamsMixin(serializers.Serializer):
+    microservice_auth_id = serializers.UUIDField(
+        help_text='Глобальный идентификатор пользователя',
+        allow_null=False,
+        required=True,
+    )
+
+
 class LoginUserSerializer(serializers.ModelSerializer):
     username = serializers.CharField(max_length=150)
 
     class Meta:
         model = get_user_model()
         fields = ['username', 'password']
+
+
+class LoginUserByEmailSerializer(serializers.ModelSerializer):
+    email = serializers.CharField(max_length=150)
+
+    class Meta:
+        model = get_user_model()
+        fields = ['email', 'password']
 
 
 class RegistrateUserSerializer(serializers.ModelSerializer):
@@ -50,8 +66,16 @@ class LoginOrRegistrateUserByExternServiceSerializer(serializers.Serializer):
 
 
 class UserPutSerializer(serializers.ModelSerializer):
-    current_username = serializers.CharField(max_length=150, read_only=True)
-
     class Meta:
         model = get_user_model()
-        fields = ['current_username', 'username', 'first_name', 'last_name']
+        fields = ['username', 'first_name', 'last_name']
+
+
+class SearchUserSerializer(serializers.Serializer):
+    search_string = serializers.CharField(
+        help_text='Слово для поиска. Поиск происходит по имени пользователя, фамилии, имени и email',
+        required=True,
+        allow_null=False,
+        allow_blank=False,
+        max_length=20,
+    )
