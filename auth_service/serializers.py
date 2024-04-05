@@ -76,6 +76,6 @@ class SearchUserSerializer(serializers.Serializer):
         help_text='Слово для поиска. Поиск происходит по имени пользователя, фамилии, имени и email',
         required=True,
         allow_null=False,
-        allow_blank=False,
+        allow_blank=True,
         max_length=20,
     )

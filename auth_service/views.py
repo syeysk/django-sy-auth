@@ -352,5 +352,5 @@ class SearchUserView(APIView):
                     | Q(first_name__contains=search_string)
                     | Q(email__contains=search_string)
         )
-        usernames = get_user_model().objects.filter(query).values('username', 'last_name', 'first_name')[:10]
-        return Response(status=status.HTTP_200_OK, data=usernames)
+        users_data = get_user_model().objects.filter(query).values('username', 'last_name', 'first_name')[:5]
+        return Response(status=status.HTTP_200_OK, data={'users_data': list(users_data)})
