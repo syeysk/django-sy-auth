@@ -335,7 +335,7 @@ class SearchUserView(APIView):
     renderer_classes = [EncryptJSONRenderer]
 
     @extend_schema(
-        tags=['4. Прочие методы'],
+        tags=['3. Прочие методы'],
         parameters=[
             parameter_microservice_auth_id,
         ],
