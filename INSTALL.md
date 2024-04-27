@@ -61,27 +61,30 @@ python manage.py runserver 8004
 
 ## Если хотите, примените Nginx + Debian
 
-Настройки для Nginx:
+Создайте файл `/etc/nginx/conf.d/auth.intera.space.conf` и запишите в него настройки для Nginx:
 
 ```
 server {
+    listen 80;
+    listen [::]:80;
+    server_name auth.intera.space www.auth.intera.space;
+    root /usr/share/nginx/html/django-sy-auth;
     location / {
         proxy_pass http://127.0.0.1:8004;
     }
-    location /static/	 {
+    location /static/ {
         sendfile on;
         root /usr/share/nginx/html/django-sy-auth;
     }
-    location /media/	 {
+    location /media/ {
         sendfile on;
-        root /usr/share/nginx/html/django-sy-auth;
+        root /usr/share/nginx/html/django-sy-auth/media;
     }
     location = /favicon.ico {
-        sendfile on;
-        root /usr/share/nginx/html/django-sy-auth/static;
+       sendfile on;
+       root /usr/share/nginx/html/django-sy-auth/static;
     }
-}
 ```
 
-Дополнительно:
-- [Получение сертификата для домена](https://www.nginx.com/blog/using-free-ssltls-certificates-from-lets-encrypt-with-nginx/) - поправка: возможно, на Вашем сервере нужно вместо команды `python` использовать `python3`
+Если нужно установить сертификат SSL для домена, то [следуйте инструкциям](https://www.nginx.com/blog/using-free-ssltls-certificates-from-lets-encrypt-with-nginx/) - поправка: возможно, на Вашем сервере нужно вместо команды `python` использовать `python3`.
+Если Вы ранее выполняли команды из этой инструкции для других серверов Платформы, то достаточно выполнить команду `sudo certbot --nginx -d auth.intera.space -d www.auth.intera.space`, чтобы получить сертификат.

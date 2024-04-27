@@ -5,7 +5,7 @@ services:
 
   platform:
     build: .
-    container_name: 'platform'
+    container_name: 'sy-auth'
     command: >
        bash -c "python3 manage.py migrate
        && python3 manage.py collectstatic --noinput
